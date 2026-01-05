@@ -1,0 +1,98 @@
+{
+  "wandb_api_key": "YOUR_WANDB_API_KEY_HERE",
+  "gemini_base_url": "YOUR_GEMINI_BASE_URL_HERE",
+  "gemini_api_key": "YOUR_GEMINI_API_KEY_HERE",
+  "steps": {
+    "fasttext_vectorization": {
+      "model_path": "cc_tr_300.bin",
+      "input_file": "terms.json",
+      "output_file": "terms_fasttext_embeddings.csv"
+    },
+    "embedding_clustering": {
+      "input_file": "terms_fasttext_embeddings.csv",
+      "output_file": "clusters_agglomerative.json",
+      "distance_threshold": 0.4
+    },
+    "cluster_postprocessing": {
+      "input_file": "clusters_agglomerative.json",
+      "output_file": "clusters_processed.json",
+      "use_substring_filter": false
+    },
+    "llm_augmentation": {
+      "model_name": "gemini-2.5-flash",
+      "num_processes": 12,
+      "input_file": "clusters_processed.json",
+      "output_file": "augmented_clusters.json",
+      "batch_output_dir": "batch_output_gemini-2.5-flash"
+    },
+    "dataset_formatting": {
+      "input_file": "augmented_clusters.json",
+      "output_ce": "synonym_dataset_ce.jsonl",
+      "output_contrastive": "synonym_dataset_contrastive.jsonl"
+    },
+    "dataset_analysis": {
+      "input_file": "synonym_dataset_ce.jsonl",
+      "expected_labels": ["synonym", "antonym", "co-hyponym"],
+      "directional_dup_check": false
+    },
+    "synonym_graph": {
+      "embeddings": {
+        "model_path": "/app/tr-synonym-model-production",
+        "input_parquet": "/data/output_combined_all.parquet",
+        "output_parquet": "/data/output_embeddings.parquet",
+        "num_gpus": 1,
+        "batch_size": 512
+      },
+      "search_candidates": {
+        "input_path": "data/merged_embeddings.parquet",
+        "work_dir": "workspace_temp",
+        "output_dir": "results_final",
+        "id_col": "ml_id",
+        "emb_col": "normalized_embeddings",
+        "default_dim": 1024,
+        "top_k": 100,
+        "threshold": 0.7,
+        "batch_size_search": 32768,
+        "ivf_nlist": 16384,
+        "ivf_nprobe": 32
+      },
+      "classification": {
+        "model_path": "tr-synonym-ytu-ce-cosmos-turkish-e5-large-ce-v7",
+        "input_jsonl": "word_pairs.jsonl",
+        "output_dir": "classification_results",
+        "batch_size": 4096,
+        "chunk_size": 2000000,
+        "confidence_threshold": 0.7,
+        "num_workers": 8,
+        "device": "cuda:1"
+      },
+      "cluster_step1": {
+        "input_file": "data/filtered_synonyms_final.parquet",
+        "checkpoint_file": "cluster_checkpoint.pkl",
+        "threshold_ratio": 0.51
+      },
+      "cluster_step2": {
+        "checkpoint_file": "cluster_checkpoint.pkl",
+        "output_file": "final_clusters.jsonl",
+        "n_jobs": 16,
+        "chunk_size": 500000,
+        "batch_size": 5000
+      },
+      "parent_chooser": {
+        "embeddings_path": "data/kt_qdrant.parquet",
+        "clusters_file": "final_clusters_with_parents.jsonl",
+        "output_file": "final_clusters_completed.jsonl",
+        "num_calc_workers": 48,
+        "num_read_workers": 16,
+        "chunk_size": 5000
+      },
+      "parent_child": {
+        "parquet_path": "data/kt_qdrant.parquet",
+        "clusters_path": "final_clusters_completed.jsonl",
+        "output_path": "data/kt_qdrant_enriched.parquet",
+        "batch_size": 500000
+      }
+    }
+  }
+}
+
