@@ -25,7 +25,7 @@ The framework consists of three main components:
 ## Project Structure
 
 ```
-synonym-framework/
+semantic-relations-graphing/
 ├── dataset-building/
 │   ├── step1-embedding/          # FastText vectorization
 │   ├── step2-clustering/         # Agglomerative clustering
@@ -50,8 +50,8 @@ synonym-framework/
 ## Installation
 
 ```bash
-git clone https://github.com/your-username/synonym-framework.git
-cd synonym-framework
+git clone https://github.com/ebubekirsoftware/semantic-relations-graphing.git
+cd semantic-relations-graphing
 pip install -r requirements.txt
 ```
 
